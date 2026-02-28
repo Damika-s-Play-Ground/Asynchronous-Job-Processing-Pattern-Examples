@@ -68,7 +68,7 @@ python3 --version
 ## Step 1 — Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Damika-s-Play-Ground/Asynchronous-Job-Processing-Pattern-Examples.git
 cd "Example 1"
 ```
 
