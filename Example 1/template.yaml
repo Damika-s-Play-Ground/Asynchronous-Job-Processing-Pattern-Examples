@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Async Text Processing API — Example 1
+
+  Demonstrates the asynchronous job processing pattern:
+  POST /jobs → job created (PENDING) → worker processes async → GET /jobs/{id} to poll status.
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 10
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref JobsTable
+
+Resources:
+
+  # ── DynamoDB table to store job records ──────────────────────────────────────
+  JobsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: jobId
+        Type: String
+
+  # ── Lambda 1: Create Job ──────────────────────────────────────────────────────
+  CreateJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: create_job/
+      Handler: app.lambda_handler
+      Description: Accepts a POST /jobs request, stores job as PENDING, invokes worker async
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WorkerFunction
+      Environment:
+        Variables:
+          WORKER_NAME: !Ref WorkerFunction
+      Events:
+        CreateJob:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: post
+
+  # ── Lambda 2: Worker (async processor) ───────────────────────────────────────
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: worker/
+      Handler: app.lambda_handler
+      Description: Background worker — simulates OCR, ML inference, and heavy search
+      Timeout: 30   # Override global: worker sleeps ~5s total to simulate processing
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobsTable
+
+  # ── Lambda 3: Get Job Status ──────────────────────────────────────────────────
+  GetJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_job/
+      Handler: app.lambda_handler
+      Description: Returns current job status and result from DynamoDB
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref JobsTable
+      Events:
+        GetJob:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}
+            Method: get
+
+Outputs:
+  ApiBaseUrl:
+    Description: "Base URL of the deployed API Gateway"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+  CreateJobEndpoint:
+    Description: "POST this endpoint to submit a new job"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/jobs"
+
+  GetJobEndpoint:
+    Description: "GET this endpoint to poll job status (replace {id} with your jobId)"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/jobs/{id}"
+
+  JobsTableName:
+    Description: "DynamoDB table storing all job records"
+    Value: !Ref JobsTable

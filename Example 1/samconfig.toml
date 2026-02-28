@@ -1,0 +1,16 @@
+# samconfig.toml — SAM CLI deployment configuration
+# This file stores non-secret deployment parameters.
+# Secrets (credentials, region) are loaded from .env via the deploy script.
+
+version = 0.1
+
+[default]
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true          # SAM auto-creates and manages the S3 bucket for artifacts
+confirm_changeset = false  # Set to true if you want to review changes before each deploy
+fail_on_empty_changeset = false
