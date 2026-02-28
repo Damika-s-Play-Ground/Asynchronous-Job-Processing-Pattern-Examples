@@ -103,29 +103,38 @@ def update_status(job_id: str, status: str, extra: dict = None):
         ExpressionAttributeNames=attr_names,
         ExpressionAttributeValues=attr_values,
     )
+    print(json.dumps({"level": "INFO", "message": "Job status updated", "jobId": job_id, "status": status, "extraKeys": sorted(list(extra.keys())) if extra else []}))
 
 
 # ── Main handler ──────────────────────────────────────────────────────────────
 
 def lambda_handler(event, context):
     job_id = event["jobId"]
+    print(json.dumps({"level": "INFO", "message": "Worker invoked", "requestId": context.aws_request_id, "jobId": job_id}))
 
     # Fetch job text from DynamoDB
     item = table.get_item(Key={"jobId": job_id}).get("Item", {})
     text = item.get("text", "")
+    print(json.dumps({"level": "INFO", "message": "Job record loaded", "jobId": job_id, "textLength": len(text), "hasItem": bool(item)}))
 
     # Mark job as in-progress
     update_status(job_id, "IN_PROGRESS")
 
     try:
         # ── Stage 1: OCR ──────────────────────────────────────────────────────
+        print(json.dumps({"level": "INFO", "message": "Stage start", "jobId": job_id, "stage": "ocr"}))
         ocr_result = simulate_ocr(text)
+        print(json.dumps({"level": "INFO", "message": "Stage complete", "jobId": job_id, "stage": "ocr", "wordCount": ocr_result.get("wordCount")}))
 
         # ── Stage 2: ML Inference ─────────────────────────────────────────────
+        print(json.dumps({"level": "INFO", "message": "Stage start", "jobId": job_id, "stage": "ml_inference"}))
         ml_result = simulate_ml(text)
+        print(json.dumps({"level": "INFO", "message": "Stage complete", "jobId": job_id, "stage": "ml_inference", "sentiment": ml_result.get("sentiment"), "confidence": ml_result.get("confidence")}))
 
         # ── Stage 3: Heavy Search ─────────────────────────────────────────────
+        print(json.dumps({"level": "INFO", "message": "Stage start", "jobId": job_id, "stage": "search"}))
         search_result = simulate_search(text)
+        print(json.dumps({"level": "INFO", "message": "Stage complete", "jobId": job_id, "stage": "search", "topKeywords": search_result.get("topKeywords", [])}))
 
         # ── Mark job as done ──────────────────────────────────────────────────
         update_status(
@@ -141,8 +150,10 @@ def lambda_handler(event, context):
                 )
             },
         )
+        print(json.dumps({"level": "INFO", "message": "Worker completed", "jobId": job_id, "status": "DONE"}))
 
     except Exception as exc:
         # Mark job as errored so the caller can detect failure via polling
         update_status(job_id, "ERROR", extra={"errorMessage": str(exc)})
+        print(json.dumps({"level": "ERROR", "message": "Worker failed", "jobId": job_id, "error": str(exc)}))
         raise

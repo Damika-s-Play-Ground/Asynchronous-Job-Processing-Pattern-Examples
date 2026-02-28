@@ -26,10 +26,13 @@ worker_name = os.environ["WORKER_NAME"]
 
 
 def lambda_handler(event, context):
+    print(json.dumps({"level": "INFO", "message": "CreateJob invoked", "requestId": context.aws_request_id}))
+
     # ── Parse request body ────────────────────────────────────────────────────
     try:
         body = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError:
+        print(json.dumps({"level": "WARN", "message": "Invalid JSON body", "requestId": context.aws_request_id}))
         return {
             "statusCode": 400,
             "body": json.dumps({"error": "Invalid JSON in request body"}),
@@ -37,6 +40,7 @@ def lambda_handler(event, context):
 
     text = body.get("text", "").strip()
     if not text:
+        print(json.dumps({"level": "WARN", "message": "Missing or empty text field", "requestId": context.aws_request_id}))
         return {
             "statusCode": 400,
             "body": json.dumps({"error": "Field 'text' is required and must not be empty"}),
@@ -45,6 +49,7 @@ def lambda_handler(event, context):
     # ── Create job record in DynamoDB ─────────────────────────────────────────
     job_id = str(uuid.uuid4())
     now = int(time.time())
+    print(json.dumps({"level": "INFO", "message": "Creating job record", "jobId": job_id, "textLength": len(text)}))
 
     table.put_item(
         Item={
@@ -64,8 +69,10 @@ def lambda_handler(event, context):
         InvocationType="Event",
         Payload=json.dumps({"jobId": job_id}),
     )
+    print(json.dumps({"level": "INFO", "message": "Worker invoked asynchronously", "jobId": job_id, "workerName": worker_name}))
 
     # ── Return job ID to caller immediately ───────────────────────────────────
+    print(json.dumps({"level": "INFO", "message": "CreateJob completed", "jobId": job_id, "statusCode": 202}))
     return {
         "statusCode": 202,
         "body": json.dumps(

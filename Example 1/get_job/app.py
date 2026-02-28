@@ -33,11 +33,13 @@ class DecimalEncoder(json.JSONEncoder):
 
 def lambda_handler(event, context):
     job_id = event["pathParameters"]["id"]
+    print(json.dumps({"level": "INFO", "message": "GetJob invoked", "requestId": context.aws_request_id, "jobId": job_id}))
 
     response = table.get_item(Key={"jobId": job_id})
     item = response.get("Item")
 
     if not item:
+        print(json.dumps({"level": "WARN", "message": "Job not found", "jobId": job_id}))
         return {
             "statusCode": 404,
             "body": json.dumps({"error": f"Job '{job_id}' not found"}),
@@ -48,8 +50,10 @@ def lambda_handler(event, context):
         try:
             item["result"] = json.loads(item["result"])
         except (json.JSONDecodeError, TypeError):
+            print(json.dumps({"level": "WARN", "message": "Result field is not valid JSON string", "jobId": job_id}))
             pass
 
+    print(json.dumps({"level": "INFO", "message": "GetJob completed", "jobId": job_id, "status": item.get("status"), "statusCode": 200}))
     return {
         "statusCode": 200,
         "body": json.dumps(item, cls=DecimalEncoder),
