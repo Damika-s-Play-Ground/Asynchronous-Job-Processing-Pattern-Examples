@@ -93,9 +93,11 @@ def update_status(job_id: str, status: str, extra: dict = None):
 
     if extra:
         for i, (key, val) in enumerate(extra.items()):
-            placeholder = f":v{i}"
-            update_expr += f", {key} = {placeholder}"
-            attr_values[placeholder] = val
+            name_placeholder = f"#e{i}"
+            value_placeholder = f":v{i}"
+            update_expr += f", {name_placeholder} = {value_placeholder}"
+            attr_names[name_placeholder] = key
+            attr_values[value_placeholder] = val
 
     table.update_item(
         Key={"jobId": job_id},
