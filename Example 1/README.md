@@ -191,8 +191,9 @@ Expected response (immediate, ~200ms):
 
 ### Poll for job status
 
+Extract the `jobId` from the previous response and use it to poll the job status:
 ```bash
-curl https://<YOUR_API_URL>/Prod/jobs/f47ac10b-58cc-4372-a567-0e02b2c3d479
+curl https://<YOUR_API_URL>/Prod/jobs/<jobId>
 ```
 
 Poll a few times. You will see the status progress:
