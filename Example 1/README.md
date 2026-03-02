@@ -52,7 +52,7 @@ Before you begin, install the following tools:
 |------|---------|--------------|
 | **AWS CLI v2** | Authenticate with AWS | https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html |
 | **AWS SAM CLI** | Build and deploy serverless apps | https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html |
-| **Python 3.11+** | Runtime for Lambda functions | https://www.python.org/downloads/ |
+| **Python 3.11, 3.12, or 3.13** | Runtime for Lambda functions — must match the `Runtime:` value in `template.yaml` (currently `python3.13`) | https://www.python.org/downloads/ |
 | **Git** | Clone the repository | https://git-scm.com/downloads |
 
 Verify installations:
@@ -142,8 +142,17 @@ Save the file. It is listed in `.gitignore` and will never be committed.
 
 ## Step 5 — Deploy to AWS
 
+**macOS / Linux:**
 ```bash
 bash scripts/deploy.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+# One-time: allow local scripts to run (run PowerShell as Administrator)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+.\scripts\deploy.ps1
 ```
 
 This script will:
@@ -172,18 +181,47 @@ Value       https://abc123.execute-api.us-east-1.amazonaws.com/Prod/jobs/{id}
 
 ## Step 6 — Test the API
 
-Set a shell variable from the `ApiBaseUrl` value copied in Step 5, then use it for all commands below.
+Replace `https://abc123.execute-api.us-east-1.amazonaws.com/Prod` with your actual `ApiBaseUrl` from Step 5.
+
+> **Windows note:** CMD and PowerShell handle quotes differently from bash.
+> Use the correct block for your terminal below.
+
+---
 
 ### Submit a job
 
+**macOS / Linux (bash):**
 ```bash
-# Set your API base URL (replace with your actual ApiBaseUrl from the deploy output)
 API_URL="https://abc123.execute-api.us-east-1.amazonaws.com/Prod"
 
 curl -X POST "$API_URL/jobs" \
   -H "Content-Type: application/json" \
   -d '{"text": "AWS Lambda is a great serverless compute service"}'
 ```
+
+**Windows — Command Prompt (cmd.exe):**
+```cmd
+set API_URL=https://abc123.execute-api.us-east-1.amazonaws.com/Prod
+
+curl -X POST "%API_URL%/jobs" -H "Content-Type: application/json" -d "{\"text\": \"AWS Lambda is a great serverless compute service\"}"
+```
+
+**Windows — PowerShell:**
+```powershell
+$API_URL = "https://abc123.execute-api.us-east-1.amazonaws.com/Prod"
+
+$response = Invoke-RestMethod -Method POST `
+  -Uri "$API_URL/jobs" `
+  -ContentType "application/json" `
+  -Body '{"text": "AWS Lambda is a great serverless compute service"}'
+
+$response          # prints the full response object
+$jobId = $response.jobId
+```
+
+> `Invoke-RestMethod` is the recommended PowerShell approach — it handles JSON quoting natively and returns a proper PowerShell object. Avoid `curl.exe` in PowerShell; argument quoting with external executables is unreliable.
+
+---
 
 Expected response (immediate, ~200ms):
 
@@ -195,12 +233,32 @@ Expected response (immediate, ~200ms):
 }
 ```
 
+---
+
 ### Poll for job status
 
-Extract the `jobId` from the previous response and use it to poll the job status:
+Extract the `jobId` from the previous response and poll until status is `DONE`.
+
+**macOS / Linux (bash):**
 ```bash
 curl "$API_URL/jobs/<jobId>"
 ```
+
+**Windows — Command Prompt:**
+```cmd
+curl "%API_URL%/jobs/<jobId>"
+```
+
+**Windows — PowerShell:**
+```powershell
+# $jobId was captured automatically if you used Invoke-RestMethod above
+# otherwise paste it manually:
+$jobId = "<your-job-id>"
+
+Invoke-RestMethod -Uri "$API_URL/jobs/$jobId"
+```
+
+---
 
 Poll a few times. You will see the status progress:
 
@@ -245,11 +303,13 @@ Poll a few times. You will see the status progress:
 }
 ```
 
-### Quick poll loop (bash)
+---
 
+### Quick poll loop
+
+**macOS / Linux (bash):**
 ```bash
-# API_URL was set above — ensure it is still in your shell session
-JOB_ID="<your-job-id>"   # paste the jobId returned by the submit request
+JOB_ID="<your-job-id>"
 
 while true; do
   STATUS=$(curl -s "$API_URL/jobs/$JOB_ID" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
@@ -257,6 +317,18 @@ while true; do
   [ "$STATUS" = "DONE" ] || [ "$STATUS" = "ERROR" ] && break
   sleep 1
 done
+```
+
+**Windows — PowerShell:**
+```powershell
+# $jobId is already set if you used Invoke-RestMethod to submit the job above
+do {
+  $result = Invoke-RestMethod -Uri "$API_URL/jobs/$jobId"
+  Write-Host "Status: $($result.status)"
+  Start-Sleep -Seconds 1
+} until ($result.status -eq "DONE" -or $result.status -eq "ERROR")
+
+$result   # print full result when done
 ```
 
 ---
@@ -288,11 +360,17 @@ curl -X POST http://127.0.0.1:3000/jobs \
 
 ## Step 8 — Teardown (delete all AWS resources)
 
-When you are done experimenting, run this command to delete every AWS resource
-created by this stack and stop all charges:
+When you are done experimenting, run the teardown command to delete every AWS resource
+created by this stack and stop all charges.
 
+**macOS / Linux:**
 ```bash
 bash scripts/teardown.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\teardown.ps1
 ```
 
 You will be prompted to confirm. Type `yes` to proceed.
@@ -326,8 +404,10 @@ Example 1/
 │   └── app.py              # Lambda 3: GET /jobs/{id} — returns status and result
 │
 ├── scripts/
-│   ├── deploy.sh           # Build + deploy to AWS
-│   └── teardown.sh         # Delete all AWS resources
+│   ├── deploy.sh           # Build + deploy to AWS          (macOS / Linux)
+│   ├── deploy.ps1          # Build + deploy to AWS          (Windows PowerShell)
+│   ├── teardown.sh         # Delete all AWS resources       (macOS / Linux)
+│   └── teardown.ps1        # Delete all AWS resources       (Windows PowerShell)
 │
 └── README.md
 ```
@@ -356,8 +436,10 @@ PENDING → IN_PROGRESS → DONE
 - Double-check `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in your `.env`
 - Ensure the IAM user has `AdministratorAccess` attached (Step 3)
 
-**`sam build` fails**
-- Ensure Python 3.11+ is installed: `python3 --version`
+**`sam build` fails with "Binary validation failed for python"**
+- SAM requires the Python version on your PATH to exactly match the `Runtime:` in `template.yaml` (currently `python3.13`)
+- Check what you have: `python --version`
+- If you have a different version (e.g. 3.12), change the one line in `template.yaml`: `Runtime: python3.12`
 - Ensure SAM CLI is up to date: `sam --version`
 
 **API returns 500**
@@ -375,5 +457,9 @@ PENDING → IN_PROGRESS → DONE
 - Ensure the `LambdaInvokePolicy` is correctly applied in `template.yaml`
 
 **Windows users**
-- Use **Git Bash** or **WSL2** to run the `.sh` scripts
-- Alternatively, manually export the variables in PowerShell and run `sam build` / `sam deploy` directly
+- Use `.\scripts\deploy.ps1` and `.\scripts\teardown.ps1` — native PowerShell scripts are provided
+- If you see _"running scripts is disabled"_, run this once in an Administrator PowerShell:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+- Ensure `sam` and `aws` CLI tools are on your `PATH` (restart PowerShell after installing them)

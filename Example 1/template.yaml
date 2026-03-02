@@ -8,7 +8,7 @@ Description: >
 
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: python3.13
     Timeout: 10
     Environment:
       Variables:
