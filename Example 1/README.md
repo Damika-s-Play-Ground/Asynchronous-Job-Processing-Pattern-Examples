@@ -156,6 +156,9 @@ First deploy takes about 2–3 minutes. You will see output like:
 ```
 CloudFormation outputs from deployed stack
 --------------------------------------------
+Key         ApiBaseUrl
+Value       https://abc123.execute-api.us-east-1.amazonaws.com/Prod
+
 Key         CreateJobEndpoint
 Value       https://abc123.execute-api.us-east-1.amazonaws.com/Prod/jobs
 
@@ -163,18 +166,21 @@ Key         GetJobEndpoint
 Value       https://abc123.execute-api.us-east-1.amazonaws.com/Prod/jobs/{id}
 ```
 
-**Copy the `CreateJobEndpoint` URL** — you will need it in Step 6.
+**Copy the `ApiBaseUrl` value** — you will use it to call the API in Step 6.
 
 ---
 
 ## Step 6 — Test the API
 
-Replace `<YOUR_API_URL>` with the `CreateJobEndpoint` from Step 5.
+Set a shell variable from the `ApiBaseUrl` value copied in Step 5, then use it for all commands below.
 
 ### Submit a job
 
 ```bash
-curl -X POST https://<YOUR_API_URL>/Prod/jobs \
+# Set your API base URL (replace with your actual ApiBaseUrl from the deploy output)
+API_URL="https://abc123.execute-api.us-east-1.amazonaws.com/Prod"
+
+curl -X POST "$API_URL/jobs" \
   -H "Content-Type: application/json" \
   -d '{"text": "AWS Lambda is a great serverless compute service"}'
 ```
@@ -193,7 +199,7 @@ Expected response (immediate, ~200ms):
 
 Extract the `jobId` from the previous response and use it to poll the job status:
 ```bash
-curl https://<YOUR_API_URL>/Prod/jobs/<jobId>
+curl "$API_URL/jobs/<jobId>"
 ```
 
 Poll a few times. You will see the status progress:
@@ -242,8 +248,8 @@ Poll a few times. You will see the status progress:
 ### Quick poll loop (bash)
 
 ```bash
-JOB_ID="your-job-id-here"
-API_URL="https://<YOUR_API_URL>/Prod"
+# API_URL was set above — ensure it is still in your shell session
+JOB_ID="<your-job-id>"   # paste the jobId returned by the submit request
 
 while true; do
   STATUS=$(curl -s "$API_URL/jobs/$JOB_ID" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
@@ -356,7 +362,13 @@ PENDING → IN_PROGRESS → DONE
 
 **API returns 500**
 - Open AWS Console → CloudWatch → Log groups → find `/aws/lambda/...CreateJob...` or `...Worker...`
-- Lambda logs will show the full Python traceback
+- All Lambdas emit structured JSON logs. Filter for `"level": "ERROR"` or look for a Python traceback after the last structured entry
+- Example of what you will see in the logs:
+  ```
+  {"level": "INFO", "message": "Stage start", "jobId": "f47ac10b-...", "stage": "ocr"}
+  {"level": "INFO", "message": "Stage complete", "jobId": "f47ac10b-...", "stage": "ocr", "wordCount": 9}
+  {"level": "ERROR", "message": "Worker failed", "jobId": "f47ac10b-...", "error": "..."}
+  ```
 
 **Job stays PENDING forever**
 - The worker was not invoked. Check the CreateJob Lambda logs in CloudWatch.
