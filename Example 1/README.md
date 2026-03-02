@@ -1,5 +1,7 @@
 # Async Text Processing API — Example 1 (Basic)
-
+<p align="center">
+<img src="./assets/diagram.png" alt="Diagram of the asynchronous job processing pattern"/>
+</p>
 A minimal, deployable demonstration of the **Asynchronous Job Processing Pattern** using AWS serverless services.
 
 ```
