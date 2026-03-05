@@ -275,7 +275,7 @@ Poll a few times. You will see the status progress:
 }
 ```
 
-**When complete:**
+**When DONE:**
 ```json
 {
   "jobId": "f47ac10b-...",
@@ -427,7 +427,7 @@ PENDING → IN_PROGRESS → DONE
 |--------|---------|
 | `PENDING` | Job created, worker not yet started |
 | `IN_PROGRESS` | Worker is actively processing |
-| `DONE` | Processing complete, `result` field is populated |
+| `DONE` | Processing done, `result` field is populated |
 | `ERROR` | Worker failed, `errorMessage` field explains why |
 
 ---
@@ -451,6 +451,7 @@ PENDING → IN_PROGRESS → DONE
   ```
   {"level": "INFO", "message": "Stage start", "jobId": "f47ac10b-...", "stage": "ocr"}
   {"level": "INFO", "message": "Stage complete", "jobId": "f47ac10b-...", "stage": "ocr", "wordCount": 9}
+  {"level": "INFO", "message": "Worker done", "jobId": "f47ac10b-...", "status": "DONE"}
   {"level": "ERROR", "message": "Worker failed", "jobId": "f47ac10b-...", "error": "..."}
   ```
 

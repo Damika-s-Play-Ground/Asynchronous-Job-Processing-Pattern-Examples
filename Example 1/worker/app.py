@@ -152,7 +152,7 @@ def lambda_handler(event, context):
                 )
             },
         )
-        print(json.dumps({"level": "INFO", "message": "Worker completed", "jobId": job_id, "status": "DONE"}))
+        print(json.dumps({"level": "INFO", "message": "Worker done", "jobId": job_id, "status": "DONE"}))
 
     except Exception as exc:
         # Mark job as errored so the caller can detect failure via polling
