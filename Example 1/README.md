@@ -31,7 +31,7 @@ Lambda: CreateJob
   │
   ▼
 Lambda: Worker  (runs independently, ~5s)
-  │  ├── sets status → IN_PROGRESS
+  │  ├── sets status → PROCESSING
   │  ├── Stage 1: simulate OCR     (~2s)
   │  ├── Stage 2: simulate ML      (~2s)
   │  ├── Stage 3: simulate Search  (~1s)
@@ -264,11 +264,11 @@ Invoke-RestMethod -Uri "$API_URL/jobs/$jobId"
 
 Poll a few times. You will see the status progress:
 
-**While processing (~5s):**
+**While PROCESSING (~5s):**
 ```json
 {
   "jobId": "f47ac10b-...",
-  "status": "IN_PROGRESS",
+  "status": "PROCESSING",
   "text": "AWS Lambda is a great serverless compute service",
   "createdAt": 1709000000,
   "updatedAt": 1709000001
@@ -419,14 +419,14 @@ Example 1/
 ## Job status lifecycle
 
 ```
-PENDING → IN_PROGRESS → DONE
+PENDING → PROCESSING → DONE
                       ↘ ERROR  (if the worker throws an unhandled exception)
 ```
 
 | Status | Meaning |
 |--------|---------|
 | `PENDING` | Job created, worker not yet started |
-| `IN_PROGRESS` | Worker is actively processing |
+| `PROCESSING` | Worker is actively processing |
 | `DONE` | Processing done, `result` field is populated |
 | `ERROR` | Worker failed, `errorMessage` field explains why |
 

@@ -9,7 +9,7 @@ Simulates a three-stage processing pipeline to mimic real-world workloads:
   Stage 3 — Search     : query a document index      (~1s)
 
 Status lifecycle this Lambda drives:
-  PENDING → IN_PROGRESS → DONE  (or ERROR on failure)
+  PENDING → PROCESSING → DONE  (or ERROR on failure)
 """
 
 import json
@@ -120,7 +120,7 @@ def lambda_handler(event, context):
     print(json.dumps({"level": "INFO", "message": "Job record loaded", "jobId": job_id, "textLength": len(text), "hasItem": bool(item)}))
 
     # Mark job as in-progress
-    update_status(job_id, "IN_PROGRESS")
+    update_status(job_id, "PROCESSING")
 
     try:
         # ── Stage 1: OCR ──────────────────────────────────────────────────────

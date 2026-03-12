@@ -5,7 +5,7 @@ Handles GET /jobs/{id} requests.
 
 Returns the full job record from DynamoDB, including:
   - jobId
-  - status    : PENDING | IN_PROGRESS | DONE | ERROR
+  - status    : PENDING | PROCESSING | DONE | ERROR
   - text      : original submitted text
   - result    : processing output (present when status = DONE)
   - createdAt : Unix timestamp
